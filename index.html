@@ -1,353 +1,410 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ka">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Cyber Pong</title>
+    <title>⚡ ULTIMATE CLASH</title>
     <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;800;900&display=swap');
 
         :root {
-            --bg-color: #0b0c10;
-            --p1-color: #00f2fe; /* Host - Blue */
-            --p2-color: #ff0844; /* Guest - Red */
-            --ball-color: #c5f013;
+            --p1-color: #00f2fe;
+            --p2-color: #ff0844;
+            --bg-grad: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        * { box-sizing: border-box; }
 
         body {
-            font-family: 'Orbitron', sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Montserrat', sans-serif;
+            background: var(--bg-grad);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
             color: white;
+            margin: 0;
             height: 100vh;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             overflow: hidden;
-            touch-action: none; /* ბლოკავს ეკრანის გაწელვას */
+            touch-action: manipulation; /* აქრობს ზუმს მობილურზე */
         }
 
-        /* Setup Screen Design */
-        #setup-screen {
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glassmorphism Panel */
+        .glass-panel {
             background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
+            border-radius: 30px;
             padding: 40px 30px;
             width: 90%;
-            max-width: 400px;
+            max-width: 450px;
             text-align: center;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            position: relative;
             z-index: 10;
         }
 
-        h1 { font-weight: 900; font-size: 26px; margin-bottom: 5px; color: #fff; text-shadow: 0 0 10px var(--p1-color); }
-        .subtitle { color: #aaa; font-size: 12px; margin-bottom: 20px; letter-spacing: 1px; }
+        h1 {
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 0;
+            background: -webkit-linear-gradient(#fff, #aaa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
 
         .id-box {
             background: rgba(0, 242, 254, 0.1);
             border: 2px dashed var(--p1-color);
             padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 20px;
+            border-radius: 15px;
+            font-family: monospace;
+            font-size: 18px;
+            color: var(--p1-color);
             cursor: pointer;
-        }
-        .id-label { font-size: 10px; color: var(--p1-color); text-transform: uppercase; }
-        .id-value { font-family: monospace; font-size: 16px; font-weight: 700; margin-top: 5px; word-break: break-all; }
-
-        input {
-            width: 100%; padding: 15px; background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(255,255,255,0.2); border-radius: 12px;
-            color: white; text-align: center; margin-bottom: 15px; font-family: 'Orbitron', sans-serif; outline: none;
-        }
-        input:focus { border-color: var(--p2-color); }
-
-        .btn {
-            background: linear-gradient(90deg, var(--p2-color), #ffb199);
-            color: white; border: none; padding: 15px; border-radius: 12px;
-            font-size: 16px; font-weight: 700; width: 100%; cursor: pointer; text-transform: uppercase;
+            margin: 20px 0;
+            transition: 0.3s;
         }
         
-        #loading { display: none; margin-top: 15px; color: #aaa; font-size: 14px; }
+        .id-box:active { transform: scale(0.95); background: rgba(0, 242, 254, 0.3); }
 
-        /* Game Screen */
-        #game-screen {
-            display: none; width: 100%; height: 100%; position: relative;
-            background: radial-gradient(circle at 50% 50%, #1a1a2e, #0b0c10);
+        input {
+            width: 100%;
+            padding: 18px;
+            background: rgba(0,0,0,0.2);
+            border: 2px solid transparent;
+            border-radius: 15px;
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 20px;
+            outline: none;
+            transition: 0.3s;
         }
 
-        /* ქულების დაფა */
-        #scoreboard {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            opacity: 0.2; pointer-events: none; z-index: 1;
-        }
-        .score { font-size: 100px; font-weight: 900; line-height: 1; }
-        #score-p2 { color: var(--p2-color); transform: rotate(180deg); } /* ზედა მოთამაშის ქულა */
-        #score-p1 { color: var(--p1-color); }
+        input:focus { border-color: var(--p2-color); background: rgba(0,0,0,0.4); }
 
-        /* ცენტრალური ხაზი */
-        .center-line {
-            position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
-            background: rgba(255, 255, 255, 0.1); border-top: 2px dashed rgba(255,255,255,0.2); z-index: 1; pointer-events: none;
+        .btn {
+            background: linear-gradient(90deg, #ff0844 0%, #ffb199 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 800;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 8, 68, 0.4);
+            transition: 0.3s;
         }
 
-        /* სათამაშო მოედანი (ტილო) */
-        canvas { display: block; width: 100%; height: 100%; z-index: 5; position: relative; }
+        .btn:active { transform: scale(0.95); }
+
+        /* თამაშის ინტერფეისი */
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            background: #ff0000;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            box-shadow: 0 0 10px #ff0000;
+        }
+
+        .connected .status-dot { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
+
+        .progress-container {
+            margin: 25px 0;
+            text-align: left;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 800;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        #my-fill { background: linear-gradient(90deg, #00c6ff, var(--p1-color)); box-shadow: 0 0 15px var(--p1-color); }
+        #friend-fill { background: linear-gradient(90deg, #f77062, var(--p2-color)); box-shadow: 0 0 15px var(--p2-color); }
+
+        /* სათამაშო ღილაკი */
+        #target-btn {
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff, var(--p1-color));
+            border: none;
+            box-shadow: 0 20px 40px rgba(0, 242, 254, 0.4), inset 0 -10px 20px rgba(0,0,0,0.2);
+            color: #000;
+            font-size: 28px;
+            font-weight: 900;
+            margin: 30px auto 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: transform 0.1s, top 0.2s, left 0.2s;
+            position: relative;
+        }
+
+        #target-btn:active { transform: scale(0.85); background: var(--p1-color); }
+
+        /* მფრინავი ქულები */
+        .floating-text {
+            position: absolute;
+            color: #fff;
+            font-size: 24px;
+            font-weight: 900;
+            pointer-events: none;
+            animation: floatAway 0.8s ease-out forwards;
+            text-shadow: 0 0 10px var(--p1-color);
+            z-index: 100;
+        }
+
+        @keyframes floatAway {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-80px) scale(1.5); }
+        }
 
     </style>
 </head>
 <body>
 
-    <div id="setup-screen">
-        <h1>NEON CYBER PONG</h1>
-        <p class="subtitle">Physics Multiplayer Battle</p>
+    <div id="setup-screen" class="glass-panel">
+        <h1>შექმენი მატჩი</h1>
+        <p style="color: #ccc; font-size: 14px;">შენი საიდუმლო ID (დააკლიკე):</p>
+        <div class="id-box" id="my-id" onclick="copyMyId()">იტვირთება... ⏳</div>
+        
+        <div style="margin: 30px 0; border-bottom: 1px solid rgba(255,255,255,0.1);"></div>
 
-        <div class="id-box" onclick="copyId()">
-            <div class="id-label">შენი ID კოდი</div>
-            <div class="id-value" id="my-id">იტვირთება...</div>
-        </div>
-
-        <input type="text" id="friend-id" placeholder="შეიყვანე მეგობრის ID" autocomplete="off">
-        <button class="btn" id="connect-btn" onclick="startConnection()">ბრძოლის დაწყება ⚡</button>
-        <div id="loading">ვუკავშირდებით... ⏳</div>
+        <p style="color: #ccc; font-size: 14px;">შეაერთე მეგობრის ID:</p>
+        <input type="text" id="friend-id" placeholder="მაგ: 1a2b3c...">
+        <button class="btn" onclick="startConnection()">ბრძოლაში შესვლა ⚔️</button>
     </div>
 
-    <div id="game-screen">
-        <div class="center-line"></div>
-        <div id="scoreboard">
-            <div class="score" id="score-p2">0</div>
-            <div style="height: 20px;"></div>
-            <div class="score" id="score-p1">0</div>
+    <div id="game-screen" class="glass-panel" style="display: none;">
+        <div id="connection-status" class="connected">
+            <span class="status-dot"></span> <span id="status-text">დაკავშირებულია</span>
         </div>
-        <canvas id="gameCanvas"></canvas>
+
+        <div class="progress-container">
+            <div class="progress-label">
+                <span style="color: var(--p1-color);">შენ</span>
+                <span id="my-score-txt">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="my-fill" class="progress-fill"></div>
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-label">
+                <span style="color: var(--p2-color);">მეგობარი</span>
+                <span id="friend-score-txt">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="friend-fill" class="progress-fill"></div>
+            </div>
+        </div>
+
+        <button id="target-btn" onclick="hitTarget(event)">TAP!</button>
+        <p style="font-size: 12px; color: #888; margin-top: 20px;">ვინც პირველი შეავსებს 100%-ს, ის იგებს!</p>
     </div>
 
     <script>
         const peer = new Peer();
         let conn;
-        let myId = '';
-        let isHost = false; // ვინც რეკავს, ის არის Host (განაგებს ფიზიკას)
-        
-        // ლოგიკური დაფის ზომები (ყოველთვის ერთნაირია ნებისმიერ ეკრანზე)
-        const BOARD_W = 1000;
-        const BOARD_H = 1500;
+        let myScore = 0;
+        const WIN_SCORE = 100; // მოგებისთვის საჭირო დაკლიკება
 
-        // ფიზიკის ობიექტები
-        let gameState = {
-            ball: { x: 500, y: 750, vx: 12, vy: 15, radius: 20 },
-            p1: { x: 500, y: 1400, width: 250, height: 30, score: 0 }, // Host (ქვედა)
-            p2: { x: 500, y: 100, width: 250, height: 30, score: 0 }    // Guest (ზედა)
-        };
-
-        let myPaddleX = 500; // ჩემი დაფის X კოორდინატი
-
-        // Canvas Setup
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-
-        // 1. PeerJS Setup
+        // 1. PeerJS ინიციალიზაცია
         peer.on('open', id => {
-            myId = id;
             document.getElementById('my-id').innerText = id;
         });
 
-        function copyId() {
-            if(!myId) return;
-            navigator.clipboard.writeText(myId);
-            const el = document.getElementById('my-id');
-            el.innerText = "დაკოპირდა!";
-            el.style.color = "#00ff00";
-            setTimeout(() => { el.innerText = myId; el.style.color = "white"; }, 2000);
+        // 2. ID-ის კოპირება
+        function copyMyId() {
+            const idText = document.getElementById('my-id').innerText;
+            if(idText.includes("იტვირთება")) return;
+            navigator.clipboard.writeText(idText);
+            
+            const box = document.getElementById('my-id');
+            box.innerText = "დაკოპირდა! ✔️";
+            box.style.background = "rgba(0, 255, 0, 0.2)";
+            setTimeout(() => {
+                box.innerText = idText;
+                box.style.background = "";
+            }, 2000);
         }
 
-        // 2. დაკავშირება (Host)
+        // 3. დაკავშირება (ვინც რეკავს)
         function startConnection() {
             const fId = document.getElementById('friend-id').value.trim();
-            if (!fId) return alert("შეიყვანე მეგობრის ID!");
-            if (fId === myId) return alert("საკუთარ თავს ვერ ეთამაშები!");
-
-            document.getElementById('connect-btn').style.display = 'none';
-            document.getElementById('loading').style.display = 'block';
-
+            if(!fId) return alert("შეიყვანე ID!");
+            
+            document.getElementById('setup-screen').style.opacity = '0.5';
             conn = peer.connect(fId, { reliable: true });
             
-            conn.on('open', () => { 
-                isHost = true; 
-                startGame(); 
+            conn.on('open', () => {
+                setupGameEvents();
+                switchScreen();
             });
-            conn.on('error', () => { alert("შეცდომა! გადაამოწმე ID."); location.reload(); });
+            
+            conn.on('error', () => {
+                alert("დაკავშირება ვერ მოხერხდა. შეამოწმე ID.");
+                document.getElementById('setup-screen').style.opacity = '1';
+            });
         }
 
-        // 3. მიღება (Guest)
-        peer.on('connection', incoming => {
-            conn = incoming;
-            conn.on('open', () => {
-                isHost = false; 
-                startGame();
-            });
+        // 4. დაკავშირება (ვინც პასუხობს)
+        peer.on('connection', incomingConn => {
+            conn = incomingConn;
+            setupGameEvents();
+            switchScreen();
         });
 
-        // 4. თამაშის დაწყება
-        function startGame() {
-            document.getElementById('setup-screen').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
-            resizeCanvas();
-            window.addEventListener('resize', resizeCanvas);
-            
-            // სენსორული კონტროლი
-            canvas.addEventListener('touchmove', handleTouch, {passive: false});
-            canvas.addEventListener('mousemove', handleMouse);
-
-            // ონლაინ სინქრონიზაცია
+        // 5. თამაშის მოვლენები და სინქრონიზაცია
+        function setupGameEvents() {
             conn.on('data', data => {
-                if(isHost) {
-                    // Host იღებს Guest-ის პოზიციას
-                    if(data.p2x) gameState.p2.x = data.p2x;
-                } else {
-                    // Guest იღებს მთლიან სამყაროს Host-ისგან
-                    if(data.state) {
-                        gameState.ball = data.state.ball;
-                        gameState.p1 = data.state.p1;
-                        gameState.p2.score = data.state.p2.score;
-                        document.getElementById('score-p1').innerText = gameState.p1.score;
-                        document.getElementById('score-p2').innerText = gameState.p2.score;
-                    }
+                if(data.type === 'hit') {
+                    updateEnemyProgress(data.score);
+                    if(data.score >= WIN_SCORE) gameOver(false);
                 }
             });
 
-            // თამაშის ციკლის ჩართვა
-            requestAnimationFrame(gameLoop);
+            conn.on('close', () => {
+                document.getElementById('connection-status').classList.remove('connected');
+                document.getElementById('status-text').innerText = "კავშირი გაწყდა!";
+                document.getElementById('status-text').style.color = "red";
+            });
         }
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+        // 6. ეკრანის შეცვლა
+        function switchScreen() {
+            document.getElementById('setup-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
         }
 
-        // 5. კონტროლი
-        function handleTouch(e) {
-            e.preventDefault();
-            updateMyPos(e.touches[0].clientX);
-        }
-        function handleMouse(e) {
-            updateMyPos(e.clientX);
-        }
-
-        function updateMyPos(screenX) {
-            // ეკრანის პოზიციის გადაყვანა ლოგიკურ (1000px) პოზიციაში
-            let ratio = BOARD_W / window.innerWidth;
-            myPaddleX = screenX * ratio;
+        // 7. ღილაკზე დაჭერა (მთავარი ლოგიკა)
+        function hitTarget(event) {
+            myScore++;
+            updateMyProgress();
             
-            // დაფა არ გაცდეს ეკრანს
-            let half = gameState.p1.width / 2;
-            if(myPaddleX < half) myPaddleX = half;
-            if(myPaddleX > BOARD_W - half) myPaddleX = BOARD_W - half;
+            // მფრინავი ტექსტის ეფექტი
+            createFloatingText(event.clientX, event.clientY);
+            
+            // სინთეტიკური ხმა (ლაზერის ტიპის)
+            playLaserSound();
 
-            if(isHost) {
-                gameState.p1.x = myPaddleX;
+            // დინამიური სირთულე - ღილაკი იწყებს რხევას/მოძრაობას თუ ქულა > 50
+            if(myScore > 50) {
+                const btn = document.getElementById('target-btn');
+                const randomX = (Math.random() - 0.5) * 40; // ოდნავ იწევა
+                const randomY = (Math.random() - 0.5) * 40;
+                btn.style.transform = `translate(${randomX}px, ${randomY}px) scale(0.95)`;
+                setTimeout(() => { btn.style.transform = 'translate(0,0) scale(1)'; }, 150);
+            }
+
+            // მონაცემის გაგზავნა
+            if(conn && conn.open) {
+                conn.send({ type: 'hit', score: myScore });
+            }
+
+            // შემოწმება მოგებაზე
+            if(myScore >= WIN_SCORE) {
+                setTimeout(() => gameOver(true), 100);
+            }
+        }
+
+        // 8. პროგრესის განახლება UI-ში
+        function updateMyProgress() {
+            const pct = Math.min((myScore / WIN_SCORE) * 100, 100).toFixed(0);
+            document.getElementById('my-fill').style.width = pct + '%';
+            document.getElementById('my-score-txt').innerText = pct + '%';
+        }
+
+        function updateEnemyProgress(score) {
+            const pct = Math.min((score / WIN_SCORE) * 100, 100).toFixed(0);
+            document.getElementById('friend-fill').style.width = pct + '%';
+            document.getElementById('friend-score-txt').innerText = pct + '%';
+        }
+
+        // 9. ვიზუალური ეფექტები (+1 ამოხტომა)
+        function createFloatingText(x, y) {
+            const el = document.createElement('div');
+            el.className = 'floating-text';
+            el.innerText = '+1';
+            
+            // თუ x და y არ გვაქვს (მაგალითად კლავიატურით დააჭირა)
+            if(!x) { x = window.innerWidth / 2; y = window.innerHeight / 2; }
+            
+            el.style.left = (x - 15) + 'px';
+            el.style.top = (y - 30) + 'px';
+            
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        // 10. აუდიო ეფექტი
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playLaserSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+            
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // 11. თამაშის დასრულება
+        function gameOver(isWin) {
+            if(isWin) {
+                document.body.style.background = "#00ff00";
+                alert("🏆 გამარჯვება! შენ ხარ მეფე!");
             } else {
-                gameState.p2.x = myPaddleX;
-                conn.send({ p2x: myPaddleX }); // Guest უგზავნის თავის პოზიციას Host-ს
+                document.body.style.background = "#ff0000";
+                alert("💀 წააგე! მეგობარი უფრო სწრაფი აღმოჩნდა!");
             }
+            location.reload();
         }
-
-        // 6. ფიზიკა (მხოლოდ Host ითვლის)
-        function updatePhysics() {
-            let b = gameState.ball;
-            
-            // ბურთის მოძრაობა
-            b.x += b.vx;
-            b.y += b.vy;
-
-            // კედლებთან შეჯახება (მარჯვნივ/მარცხნივ)
-            if(b.x - b.radius < 0) { b.x = b.radius; b.vx *= -1; }
-            if(b.x + b.radius > BOARD_W) { b.x = BOARD_W - b.radius; b.vx *= -1; }
-
-            // დაფებთან შეჯახება (P1 - Host - ქვედა)
-            let p1 = gameState.p1;
-            if(b.vy > 0 && b.y + b.radius > p1.y - p1.height/2 && b.y - b.radius < p1.y + p1.height/2) {
-                if(b.x > p1.x - p1.width/2 && b.x < p1.x + p1.width/2) {
-                    b.y = p1.y - p1.height/2 - b.radius;
-                    b.vy *= -1.05; // სიჩქარის მომატება
-                    b.vx = (b.x - p1.x) * 0.15; // ეფექტი დარტყმის კუთხეზე
-                }
-            }
-
-            // დაფებთან შეჯახება (P2 - Guest - ზედა)
-            let p2 = gameState.p2;
-            if(b.vy < 0 && b.y - b.radius < p2.y + p2.height/2 && b.y + b.radius > p2.y - p2.height/2) {
-                if(b.x > p2.x - p2.width/2 && b.x < p2.x + p2.width/2) {
-                    b.y = p2.y + p2.height/2 + b.radius;
-                    b.vy *= -1.05; // სიჩქარის მომატება
-                    b.vx = (b.x - p2.x) * 0.15;
-                }
-            }
-
-            // გოლის გატანა
-            if(b.y > BOARD_H) { scoreGoal(2); } // P2-მა გაიტანა
-            if(b.y < 0) { scoreGoal(1); } // P1-მა გაიტანა
-
-            // მონაცემების გაგზავნა Guest-თან
-            conn.send({ state: gameState });
-            
-            // ქულების განახლება Host-ის ეკრანზე
-            document.getElementById('score-p1').innerText = p1.score;
-            document.getElementById('score-p2').innerText = p2.score;
-        }
-
-        function scoreGoal(player) {
-            if(player === 1) gameState.p1.score++;
-            if(player === 2) gameState.p2.score++;
-            
-            // ბურთის რესეტი ცენტრში
-            gameState.ball.x = BOARD_W / 2;
-            gameState.ball.y = BOARD_H / 2;
-            gameState.ball.vx = (Math.random() > 0.5 ? 10 : -10);
-            gameState.ball.vy = (player === 1 ? -12 : 12); // წაგებულისკენ მიდის
-        }
-
-        // 7. ხატვა (Render) 
-        function render() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // ეკრანის სკალირება ლოგიკურიდან რეალურ პიქსელებში
-            let scaleX = canvas.width / BOARD_W;
-            let scaleY = canvas.height / BOARD_H;
-
-            let b = gameState.ball;
-            let p1 = gameState.p1;
-            let p2 = gameState.p2;
-
-            // P1 დაფის ხატვა (ლურჯი)
-            ctx.fillStyle = "#00f2fe";
-            ctx.shadowColor = "#00f2fe"; ctx.shadowBlur = 20;
-            ctx.fillRect((p1.x - p1.width/2) * scaleX, (p1.y - p1.height/2) * scaleY, p1.width * scaleX, p1.height * scaleY);
-
-            // P2 დაფის ხატვა (წითელი)
-            ctx.fillStyle = "#ff0844";
-            ctx.shadowColor = "#ff0844"; ctx.shadowBlur = 20;
-            ctx.fillRect((p2.x - p2.width/2) * scaleX, (p2.y - p2.height/2) * scaleY, p2.width * scaleX, p2.height * scaleY);
-
-            // ბურთის ხატვა (ნეონის მწვანე)
-            ctx.beginPath();
-            ctx.arc(b.x * scaleX, b.y * scaleY, b.radius * scaleX, 0, Math.PI * 2);
-            ctx.fillStyle = "#c5f013";
-            ctx.shadowColor = "#c5f013"; ctx.shadowBlur = 30;
-            ctx.fill();
-            ctx.shadowBlur = 0; // რესეტი
-        }
-
-        // მთავარი ციკლი
-        function gameLoop() {
-            if(isHost) updatePhysics();
-            render();
-            requestAnimationFrame(gameLoop);
-        }
-
     </script>
 </body>
 </html>
